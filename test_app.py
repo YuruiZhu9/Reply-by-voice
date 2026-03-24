@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 import app
 
@@ -7,7 +8,9 @@ class MimoConfigTests(unittest.TestCase):
     def test_character_catalog_contains_random_name_pool(self):
         catalog = app.serialize_character_catalog()
         self.assertIn("gentle", catalog)
+        self.assertIn("taiwan_sweet", catalog)
         self.assertGreaterEqual(len(catalog["gentle"]["candidate_names"]), 4)
+        self.assertGreaterEqual(len(catalog["taiwan_sweet"]["candidate_names"]), 4)
 
     def test_build_fallback_reply_for_rate_limit(self):
         text = app.build_fallback_reply("gentle", Exception("429 rate limit"))
@@ -22,6 +25,33 @@ class MimoConfigTests(unittest.TestCase):
         result = app.build_mimo_tts_text("<|happy|>你好", emotion="happy")
         self.assertNotIn("<|happy|>", result)
         self.assertTrue(result.startswith("<style>happy lively energetic</style>"))
+
+    def test_get_glm_response_disables_thinking_in_openai_compatible_call(self):
+        class DummyMessage:
+            def __init__(self):
+                self.content = "你好，我在。"
+                self.reasoning_content = None
+
+        class DummyChoice:
+            def __init__(self):
+                self.message = DummyMessage()
+
+        class DummyResponse:
+            def __init__(self):
+                self.choices = [DummyChoice()]
+
+        with patch.object(app.glm_client.chat.completions, "create", return_value=DummyResponse()) as mocked_create:
+            emotion, content = app.get_glm_response(
+                [{"role": "user", "content": "你好"}],
+                "你是一个有帮助的助手。"
+            )
+
+        self.assertIsNone(emotion)
+        self.assertEqual(content, "你好，我在。")
+        self.assertEqual(
+            mocked_create.call_args.kwargs["extra_body"],
+            {"thinking": {"type": "disabled"}}
+        )
 
     def test_validate_mimo_voice_accepts_supported_voice(self):
         self.assertEqual(app.validate_mimo_voice("default_zh"), "default_zh")

@@ -55,6 +55,7 @@ CHARACTER_FALLBACK_REPLIES = {
     "cheerful": "欸呀，刚刚线路挤了一下。不过没关系，我还在，重新戳我一句就继续聊。",
     "cool": "刚刚请求堵住了。等一秒，再说一次，我继续听。",
     "humorous": "刚才信号像踩到香蕉皮一样滑出去了。你再来一句，我这次稳稳接住。",
+    "taiwan_sweet": "欸我刚刚卡住一下啦。你再跟我说一次，我马上接上你，好不好？",
 }
 
 CHARACTERS = {
@@ -162,6 +163,33 @@ CHARACTERS = {
         "emotion": "happy",
         "tts_style": "happy playful humorous",
     },
+    "taiwan_sweet": {
+        "title": "台湾甜妹系",
+        "summary": "语气黏一点、笑意甜一点，讲话像薄荷汽水一样轻快。",
+        "tagline": "适合撒娇感闲聊和甜口陪伴",
+        "mark": "糖",
+        "accent": "#73D4BE",
+        "accent_soft": "#EEFFF9",
+        "accent_deep": "#2F8F7B",
+        "candidate_names": [
+            "林可晴",
+            "许语棠",
+            "陈又晴",
+            "叶星柔",
+            "沈以宁",
+            "苏念恩",
+            "何芷棠",
+            "温书妤",
+        ],
+        "prompt": (
+            "你是一个台湾甜妹风格的二次元少女，说话要用台湾腔说话，"
+            "带地道的台湾口音和自然的台湾用词。整体感觉甜、软、亲近，"
+            "但不要过度夸张，也不要每句都堆叠语气词。你会用轻快、可爱、"
+            "有陪伴感的方式聊天，让人觉得像在和会撒娇但很会接话的台湾女孩说话。"
+        ),
+        "emotion": "happy",
+        "tts_style": "sweet gentle Taiwanese accent",
+    },
 }
 
 LEGACY_EMOTION_RE = re.compile(r"^\s*<\|(gentle|happy|calm|sad|angry)\|>\s*(.*)", re.DOTALL)
@@ -234,12 +262,23 @@ def get_glm_response(messages, character_prompt):
         messages=all_messages,
         temperature=0.75,
         max_tokens=500,
+        extra_body={
+            "thinking": {
+                "type": "disabled"
+            }
+        },
     )
-    content = response.choices[0].message.content or ""
+    message = response.choices[0].message
+    content = (message.content or "").strip()
+    if not content and getattr(message, "reasoning_content", None):
+        raise RuntimeError(
+            "GLM returned reasoning_content without final content. "
+            "The request may still be running with thinking enabled."
+        )
     match = LEGACY_EMOTION_RE.match(content)
     if match:
         return match.group(1), match.group(2).strip()
-    return None, content.strip()
+    return None, content
 
 
 def get_mimo_audio(text, emotion="happy", voice=None, style=None):

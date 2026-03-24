@@ -164,7 +164,7 @@
         .character-rail {
             padding: 16px;
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 14px;
         }
 
@@ -534,7 +534,8 @@
             gentle: { title: "月光治愈系", summary: "轻声慢语，像深夜窗边那盏没关的小灯。", tagline: "适合安静聊天和情绪陪伴", mark: "澪", accent: "#E78FA6", accent_soft: "#FFF1F5", accent_deep: "#8E3958", candidate_names: ["月城诗音", "白羽澄铃", "神乐纱雾", "朝雾千夏"], tts_style: "gentle soft warm" },
             cheerful: { title: "元气甜心系", summary: "亮晶晶、反应快，带一点可爱的活力和小雀跃。", tagline: "适合轻松闲聊和打气鼓劲", mark: "莓", accent: "#FF9F5B", accent_soft: "#FFF4E8", accent_deep: "#9A4C16", candidate_names: ["七濑阳菜", "天宫铃奈", "月岛柚叶", "桃宫千璃"], tts_style: "happy lively energetic" },
             cool: { title: "冷冽前辈系", summary: "克制、利落、带一点距离感，但不会真的伤人。", tagline: "适合干脆直接的对话节奏", mark: "凛", accent: "#6C88E8", accent_soft: "#EEF3FF", accent_deep: "#27438D", candidate_names: ["九条凛月", "雾岛绫音", "东云千鹤", "白银澪"], tts_style: "calm cool steady" },
-            humorous: { title: "怪话吐槽系", summary: "会接梗，会抖机灵，气氛感很强，但不油腻。", tagline: "适合整活、接梗和灵动互动", mark: "桃", accent: "#8B6FE8", accent_soft: "#F4EFFF", accent_deep: "#4A329B", candidate_names: ["真白柚子", "望月团子", "猫宫小满", "八寻桃"], tts_style: "happy playful humorous" }
+            humorous: { title: "怪话吐槽系", summary: "会接梗，会抖机灵，气氛感很强，但不油腻。", tagline: "适合整活、接梗和灵动互动", mark: "桃", accent: "#8B6FE8", accent_soft: "#F4EFFF", accent_deep: "#4A329B", candidate_names: ["真白柚子", "望月团子", "猫宫小满", "八寻桃"], tts_style: "happy playful humorous" },
+            taiwan_sweet: { title: "台湾甜妹系", summary: "语气黏一点、笑意甜一点，讲话像薄荷汽水一样轻快。", tagline: "适合撒娇感闲聊和甜口陪伴", mark: "糖", accent: "#73D4BE", accent_soft: "#EEFFF9", accent_deep: "#2F8F7B", candidate_names: ["林可晴", "许语棠", "陈又晴", "叶星柔"], tts_style: "sweet gentle Taiwanese accent" }
         };
 
         let currentCharacter = "gentle";
