@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 语音对话</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 800px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        /* 角色选择 */
+        .characters {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            overflow-x: auto;
+        }
+
+        .character-btn {
+            flex: 1;
+            min-width: 100px;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .character-btn:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .character-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        /* 聊天区域 */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            line-height: 1.5;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-content {
+            background: #f0f0f0;
+            color: #333;
+            border-bottom-left-radius: 4px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin: 0 10px;
+        }
+
+        .message.user .avatar {
+            order: 1;
+            background: #e0e0e0;
+        }
+
+        .message.assistant .avatar {
+            order: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        /* 输入区域 */
+        .input-area {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        #messageInput:focus {
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            cursor: pointer;
+            font-size: 20px;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 音频播放器 */
+        .audio-player {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            background: #f0f0f0;
+            border-radius: 12px;
+            margin-top: 10px;
+        }
+
+        .play-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .waveform {
+            flex: 1;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .wave-bar {
+            width: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+            animation: none;
+        }
+
+        .wave-bar.playing {
+            animation: wave 0.5s ease-in-out infinite;
+        }
+
+        @keyframes wave {
+            0%, 100% { height: 8px; }
+            50% { height: 25px; }
+        }
+
+        .download-btn {
+            padding: 8px 15px;
+            border: 1px solid #667eea;
+            border-radius: 20px;
+            background: white;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .download-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        /* 加载状态 */
+        .typing-indicator {
+            display: flex;
+            gap: 5px;
+            padding: 15px 20px;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            animation: typing 1s ease-in-out infinite;
+        }
+
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* 保存选项 */
+        .save-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .save-option input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ AI 语音对话</h1>
+        </div>
+
+        <div class="characters">
+            <button class="character-btn active" data-character="gentle">🌸 温柔知性</button>
+            <button class="character-btn" data-character="cheerful">☀️ 活泼开朗</button>
+            <button class="character-btn" data-character="cool">❄️ 高冷御姐</button>
+            <button class="character-btn" data-character="humorous">🎭 幽默风趣</button>
+        </div>
+
+        <div class="chat-container" id="chatContainer">
+            <div class="message assistant">
+                <div class="avatar">🤖</div>
+                <div class="message-content">
+                    你好！我是你的 AI 伙伴，今天想聊些什么呢？
+                </div>
+            </div>
+        </div>
+
+        <div class="save-option">
+            <input type="checkbox" id="saveAudio" checked>
+            <label for="saveAudio">保存生成的语音文件</label>
+        </div>
+
+        <div class="input-area">
+            <div class="input-wrapper">
+                <input type="text" id="messageInput" placeholder="输入你想说的话..." autocomplete="off">
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentCharacter = 'gentle';
+        let messageHistory = [];
+        let currentAudio = null;
+
+        // 角色选择
+        document.querySelectorAll('.character-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.character-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentCharacter = btn.dataset.character;
+
+                // 清空对话
+                messageHistory = [];
+                document.getElementById('chatContainer').innerHTML = `
+                    <div class="message assistant">
+                        <div class="avatar">🤖</div>
+                        <div class="message-content">
+                            你好！我是${btn.textContent.replace(/🌸|☀️|❄️|🎭/, '')}，今天想聊些什么呢？
+                        </div>
+                    </div>
+                `;
+            });
+        });
+
+        // 回车发送
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // 显示用户消息
+            addMessage('user', message);
+            input.value = '';
+            sendBtn.disabled = true;
+
+            // 添加历史记录
+            messageHistory.push({ role: 'user', content: message });
+
+            // 显示加载状态（带音频播放器占位）
+            const loadingId = showTypingIndicator();
+
+            try {
+                // 调用聊天 API
+                const chatResponse = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: messageHistory,
+                        character: currentCharacter
+                    })
+                });
+
+                const chatData = await chatResponse.json();
+
+                if (!chatData.success) {
+                    throw new Error(chatData.error || '聊天失败');
+                }
+
+                // 调用 TTS API（在显示消息之前先获取音频）
+                const ttsResponse = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: chatData.text,
+                        emotion: chatData.emotion  // 传递情感标签，mimo 会根据标签生成不同情感的语音
+                    })
+                });
+
+                const ttsData = await ttsResponse.json();
+                console.log('TTS 响应:', ttsData);
+
+                // 移除加载状态
+                removeTypingIndicator(loadingId);
+
+                if (!ttsData.success) {
+                    console.error('TTS 失败:', ttsData.error);
+                    // TTS 失败时只显示文字
+                    addMessage('assistant', chatData.text);
+                } else {
+                    // 显示文字 + 音频播放器在一起
+                    addMessageWithAudio('assistant', chatData.text, ttsData.voice_url);
+                }
+
+            } catch (error) {
+                removeTypingIndicator(loadingId);
+                addMessage('assistant', `❌ 出错了：${error.message}`);
+            }
+
+            sendBtn.disabled = false;
+        }
+
+        function addMessage(role, content) {
+            const container = document.getElementById('chatContainer');
+            const avatar = role === 'user' ? '👤' : getCharacterAvatar();
+
+            container.innerHTML += `
+                <div class="message ${role}">
+                    ${role === 'assistant' ? `<div class="avatar">${avatar}</div>` : ''}
+                    <div class="message-content">${content}</div>
+                </div>
+            `;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function addMessageWithAudio(role, content, audioUrl) {
+            const container = document.getElementById('chatContainer');
+            const avatar = role === 'user' ? '👤' : getCharacterAvatar();
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.innerHTML = `
+                ${role === 'assistant' ? `<div class="avatar">${avatar}</div>` : ''}
+                <div class="message-content">
+                    <div class="text-content">${content}</div>
+                    ${audioUrl ? `
+                        <div class="audio-player">
+                            <button class="play-btn" onclick="toggleAudio(this, '${audioUrl}')">▶</button>
+                            <div class="waveform">
+                                ${Array.from({length: 20}, (_, i) =>
+                                    `<div class="wave-bar" style="height: ${8 + Math.random() * 15}px;"></div>`
+                                ).join('')}
+                            </div>
+                            <a class="download-btn" href="${audioUrl}" download="voice_${Date.now()}.wav">下载</a>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function getCharacterAvatar() {
+            const avatars = {
+                gentle: '🌸',
+                cheerful: '☀️',
+                cool: '❄️',
+                humorous: '🎭'
+            };
+            return avatars[currentCharacter] || '🤖';
+        }
+
+        function showTypingIndicator() {
+            const container = document.getElementById('chatContainer');
+            const id = 'typing-' + Date.now();
+            container.innerHTML += `
+                <div class="message assistant" id="${id}">
+                    <div class="avatar">${getCharacterAvatar()}</div>
+                    <div class="message-content">
+                        <div class="typing-indicator">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.scrollTop = container.scrollHeight;
+            return id;
+        }
+
+        function removeTypingIndicator(id) {
+            const element = document.getElementById(id);
+            if (element) element.remove();
+        }
+
+        function toggleAudio(btn, audioUrl) {
+            const waveform = btn.parentElement.querySelector('.waveform');
+
+            if (currentAudio && !currentAudio.paused) {
+                currentAudio.pause();
+                // 重置所有按钮状态
+                document.querySelectorAll('.play-btn').forEach(b => {
+                    b.textContent = '▶';
+                    b.parentElement.querySelectorAll('.wave-bar').forEach(bar => bar.classList.remove('playing'));
+                });
+            }
+
+            if (btn.textContent === '▶') {
+                // 播放新音频
+                currentAudio = new Audio(audioUrl);
+                currentAudio.play();
+                btn.textContent = '⏸';
+
+                // 添加波形动画
+                waveform.querySelectorAll('.wave-bar').forEach((bar, i) => {
+                    bar.classList.add('playing');
+                    bar.style.animationDelay = `${i * 0.05}s`;
+                });
+
+                currentAudio.onended = () => {
+                    btn.textContent = '▶';
+                    waveform.querySelectorAll('.wave-bar').forEach(b => b.classList.remove('playing'));
+                };
+
+                currentAudio.onerror = () => {
+                    btn.textContent = '❌';
+                    waveform.innerHTML = '<span style="font-size:12px;color:#999">音频加载失败</span>';
+                };
+            } else {
+                // 暂停
+                currentAudio.pause();
+                btn.textContent = '▶';
+                waveform.querySelectorAll('.wave-bar').forEach(b => b.classList.remove('playing'));
+            }
+        }
+    </script>
+</body>
+</html>
