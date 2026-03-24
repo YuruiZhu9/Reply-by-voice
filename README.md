@@ -1,140 +1,205 @@
-# AI 语音对话机器人
+# Reply-by-voice
 
-一个基于 Web 的 AI 语音对话应用，支持多种性格角色和情感语音合成。
+一个基于 Flask 的二次元语音聊天页面。当前版本聚焦在三件事：
 
-## 功能特点
+- 4 个角色人格，每个角色带一组随机二次元姓名
+- GLM 生成文本，MiMo TTS 生成语音
+- 更偏角色卡片式的 UI，而不是普通聊天框
 
-- 🎭 **4 种性格角色**：温柔知性、活泼开朗、高冷御姐、幽默风趣
-- 💬 **自然语言对话**：基于 GLM-4-Flash 大模型
-- 🔊 **情感语音合成**：小米 mimo TTS，支持 5 种情感（开心、温柔、平静、悲伤、生气）
-- 🎨 **精美 UI 界面**：响应式设计，支持波形动画播放
-- 💾 **语音下载**：支持保存生成的语音文件
+## 当前功能
 
-## 项目结构
+- 角色人格：
+  - `gentle` 月光治愈系
+  - `cheerful` 元气甜心系
+  - `cool` 冷冽前辈系
+  - `humorous` 怪话吐槽系
+- 每次切换角色都会从候选池里随机抽一个姓名，并在当前轮对话中保持不变
+- 首页欢迎语使用“我是某个角色名”的形式，不再直接展示风格型见面语
+- MiMo TTS 按官方文档使用 `<style>...</style>` 控制风格
+- 当 GLM 上游限流或返回空文本时，后端会返回一条符合当前角色语气的 fallback 文案，避免整条语音链路直接断掉
 
-```
-vioce_test/
-├── app.py              # Flask 后端服务
-├── index.html          # 前端对话界面
-├── .gitignore          # Git 忽略文件
-├── README.md           # 项目说明
-└── voices/             # 语音文件存储目录（运行时自动创建）
-```
+## 技术栈
 
-## 快速开始
+- Backend: Flask
+- Text model: GLM-4.7-Flash
+- TTS: Xiaomi MiMo TTS
+- Frontend: 原生 HTML / CSS / JavaScript
 
-### 1. 安装依赖
+## 目录结构
 
-```bash
-pip install flask openai
-```
-
-### 2. 配置 API Key
-
-编辑 `app.py`，填写你的 API Key：
-
-```python
-# 智谱 AI API Key（GLM-4-Flash）
-GLM_API_KEY = "your_glm_api_key"
-
-# 小米 mimo API Key（TTS 语音合成）
-MIMO_API_KEY = "your_mimo_api_key"
+```text
+Reply-by-voice/
+├── app.py
+├── index.html
+├── run_server.py
+├── test_app.py
+├── .env.example
+├── .gitignore
+└── voices/
 ```
 
-### 3. 启动服务
+## 环境变量
 
-```bash
-python app.py
+复制 `.env.example` 为 `.env`：
+
+```powershell
+Copy-Item .env.example .env
 ```
 
-### 4. 访问应用
+填写以下配置：
 
-浏览器打开：**http://localhost:5000**
+```env
+GLM_API_KEY=your_glm_api_key
+MIMO_API_KEY=your_mimo_api_key
+MIMO_TTS_VOICE=default_zh
+```
 
-## API 说明
+`MIMO_TTS_VOICE` 目前只支持：
 
-### /api/chat (POST)
+- `mimo_default`
+- `default_zh`
+- `default_en`
 
-获取 AI 回复
+## 启动方式
 
-**请求体：**
+推荐使用稳定启动脚本：
+
+```powershell
+python run_server.py
+```
+
+启动后访问：
+
+```text
+http://127.0.0.1:5000
+```
+
+说明：
+
+- `run_server.py` 会关闭 Flask reloader，适合本地常驻运行
+- 如果用 `python app.py`，会进入 debug 模式，行为更偏开发态
+
+## API
+
+### `GET /api/characters`
+
+返回当前前端所需的角色目录，包括：
+
+- 角色标题
+- 角色摘要
+- tagline
+- 主题色
+- 候选姓名池
+- 默认 TTS 风格
+
+### `POST /api/chat`
+
+请求体示例：
+
 ```json
 {
-  "messages": [{"role": "user", "content": "你好"}],
+  "messages": [
+    { "role": "user", "content": "你好" }
+  ],
   "character": "gentle"
 }
 ```
 
-**响应：**
+响应体示例：
+
 ```json
 {
   "success": true,
-  "text": "你好！我是你的 AI 伙伴",
-  "emotion": "gentle"
+  "text": "这里稍微有点忙，我还在努力跟上你的节奏。再和我说一句，我会继续陪着你。",
+  "emotion": "gentle",
+  "tts_style": "gentle soft warm",
+  "voice": "default_zh",
+  "character_title": "月光治愈系",
+  "fallback": true
 }
 ```
 
-### /api/tts (POST)
+说明：
 
-生成语音
+- 正常情况下返回 GLM 文本
+- 如果 GLM 限流或上游异常，返回角色化 fallback 文案，并把 `fallback` 置为 `true`
 
-**请求体：**
+### `POST /api/tts`
+
+请求体示例：
+
 ```json
 {
-  "text": "你好",
-  "emotion": "gentle"
+  "text": "你好，很高兴见到你。",
+  "emotion": "gentle",
+  "character": "gentle",
+  "voice": "default_zh",
+  "style": "gentle soft warm"
 }
 ```
 
-**响应：**
+响应体示例：
+
 ```json
 {
   "success": true,
+  "audio_base64": "...",
   "voice_url": "/voices/xxx.wav",
-  "audio_base64": "..."
+  "voice": "default_zh",
+  "style": "gentle soft warm"
 }
 ```
 
-## 角色配置
+## MiMo TTS 说明
 
-| 角色 | character | 情感标签 | 说明 |
-|------|-----------|----------|------|
-| 温柔知性 | gentle | `<|gentle|>` | 温和有礼，善解人意 |
-| 活泼开朗 | cheerful | `<|happy|>` | 充满活力，可爱 |
-| 高冷御姐 | cool | `<|calm|>` | 简洁直接，傲娇 |
-| 幽默风趣 | humorous | `<|happy|>` | 有趣，诙谐 |
+当前实现遵循官方文档：
 
-## 情感标签
+- voice 只使用 `mimo_default`、`default_zh`、`default_en`
+- 没有单独的 `gender` 参数
+- 风格和情绪通过合成文本前缀的 `<style>...</style>` 控制
+- 旧版 `<|happy|>` 一类标签只做兼容清理，不再作为正式调用格式
 
-mimo TTS 支持以下情感标签：
+## 前端 UI
 
-- `<|happy|>` - 开心
-- `<|gentle|>` - 温柔
-- `<|calm|>` - 平静
-- `<|sad|>` - 悲伤
-- `<|angry|>` - 生气
+当前界面不是简单聊天框，而是角色导向布局：
 
-## API Key 获取
+- 顶部 hero 区 + 当前搭子角色卡
+- 中间角色切换 rail
+- 下方聊天面板
+- 底部输入区和语音播放器
 
-### 智谱 AI (GLM-4-Flash)
+设计方向：
 
-1. 访问：https://open.bigmodel.cn/
-2. 注册并登录
-3. 在控制台获取 API Key
+- 轻玻璃态
+- 柔和渐变背景
+- 角色主题色驱动局部视觉
+- 更偏二次元陪伴感，而不是工具面板感
 
-### 小米 mimo TTS
+## 测试
 
-1. 访问：https://platform.xiaomimimo.com/
-2. 注册并登录
-3. 获取 API Key
+运行：
 
-## 技术栈
+```powershell
+python -m unittest -q
+```
 
-- **后端**：Flask
-- **对话模型**：智谱 AI GLM-4-Flash
-- **语音合成**：小米 mimo TTS
-- **前端**：原生 HTML/CSS/JavaScript
+当前测试覆盖：
 
-## License
+- 角色目录包含随机姓名池
+- MiMo TTS 风格文本拼装
+- 旧情绪标签清理
+- voice 校验
+- fallback 回复构造
 
-MIT
+## 已知说明
+
+- 当前语音是“生成后提供播放按钮”，不是自动播放
+- 如果 GLM 被限流，页面仍然会有文本和语音，但文本内容会是 fallback 文案
+- `voices/` 下的 wav 文件是运行时产物，已在 Git 中忽略
+
+## 参考
+
+- MiMo Speech Synthesis:
+  `https://platform.xiaomimimo.com/docs/usage-guide/speech-synthesis.md`
+- MiMo V2 TTS Release Note:
+  `https://platform.xiaomimimo.com/docs/news/v2-tts-release.md`
