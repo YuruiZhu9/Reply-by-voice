@@ -18,6 +18,8 @@
             --accent-soft: #fff1f5;
             --accent-deep: #8e3958;
             --user-accent: linear-gradient(135deg, #1c9dd9 0%, #7f6bff 100%);
+            --parallax-x: 0px;
+            --parallax-y: 0px;
         }
 
         * { box-sizing: border-box; }
@@ -128,30 +130,213 @@
         }
 
         .persona-card {
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
             padding: 24px;
             display: grid;
-            grid-template-columns: 112px 1fr;
-            gap: 18px;
+            grid-template-columns: minmax(220px, 260px) 1fr;
+            gap: 20px;
             align-items: center;
+            --card-glow: color-mix(in srgb, var(--accent) 68%, white 32%);
+            --card-glow-deep: color-mix(in srgb, var(--accent-deep) 76%, transparent 24%);
         }
 
-        .persona-mark, .character-mark, .avatar {
+        .persona-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            padding: 1px;
+            border-radius: inherit;
+            background: linear-gradient(135deg, rgba(255,255,255,0.9), var(--accent), var(--accent-deep), rgba(255,255,255,0.72));
+            -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor;
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask-composite: exclude;
+            opacity: .9;
+            animation: personaBorderShift 8s linear infinite;
+            pointer-events: none;
+        }
+
+        .persona-card::after {
+            content: "";
+            position: absolute;
+            inset: -22% auto auto -10%;
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle, rgba(255,255,255,0.88), color-mix(in srgb, var(--accent) 52%, white 48%) 38%, transparent 72%);
+            opacity: .55;
+            filter: blur(8px);
+            animation: personaGlowPulse 6s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .persona-visual {
+            position: relative;
+            min-height: 280px;
+            border-radius: 30px;
             display: grid;
             place-items: center;
-            color: white;
-            background: linear-gradient(145deg, var(--accent), var(--accent-deep));
-            box-shadow: 0 18px 34px rgba(0,0,0,0.12);
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 50% 24%, rgba(255,255,255,0.95), transparent 34%),
+                linear-gradient(160deg, rgba(255,255,255,0.92), color-mix(in srgb, var(--accent-soft) 78%, white 22%) 58%, rgba(255,255,255,0.82));
+            transform-style: preserve-3d;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+        }
+
+        .persona-ambient,
+        .persona-ripple,
+        .persona-sheen,
+        .persona-noise {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .persona-ambient {
+            background:
+                radial-gradient(circle at 24% 22%, rgba(255,255,255,0.86), transparent 22%),
+                radial-gradient(circle at 74% 20%, color-mix(in srgb, var(--accent) 44%, white 56%), transparent 26%),
+                radial-gradient(circle at 50% 78%, color-mix(in srgb, var(--accent-deep) 22%, white 78%), transparent 34%);
+            transform: translate3d(calc(var(--parallax-x) * -0.18), calc(var(--parallax-y) * -0.18), 0);
+        }
+
+        .persona-sheen {
+            background: linear-gradient(125deg, transparent 18%, rgba(255,255,255,0.62) 48%, transparent 78%);
+            mix-blend-mode: screen;
+            opacity: .75;
+            transform: translate3d(calc(var(--parallax-x) * 0.3), calc(var(--parallax-y) * 0.3), 0);
+        }
+
+        .persona-noise {
+            opacity: .22;
+            background-image:
+                radial-gradient(circle at 20% 24%, rgba(255,255,255,0.9) 0 2px, transparent 2px),
+                radial-gradient(circle at 78% 28%, rgba(255,255,255,0.8) 0 1.5px, transparent 1.5px),
+                radial-gradient(circle at 35% 76%, rgba(255,255,255,0.72) 0 1.5px, transparent 1.5px),
+                radial-gradient(circle at 68% 68%, rgba(255,255,255,0.72) 0 1.5px, transparent 1.5px);
+            transform: translate3d(calc(var(--parallax-x) * -0.08), calc(var(--parallax-y) * -0.08), 0);
+        }
+
+        .persona-ripple {
+            inset: 50% auto auto 50%;
+            width: 132px;
+            height: 132px;
+            margin-left: -66px;
+            margin-top: -66px;
+            border-radius: 50%;
+            border: 1.5px solid color-mix(in srgb, var(--accent) 55%, white 45%);
+            opacity: 0;
+            transform: scale(.7);
+        }
+
+        .persona-card[data-speaking="true"] .persona-ripple {
+            animation: personaRipple 1.7s ease-out infinite;
+        }
+
+        .persona-card[data-speaking="true"] .persona-ripple-2 { animation-delay: .28s; }
+        .persona-card[data-speaking="true"] .persona-ripple-3 { animation-delay: .56s; }
+
+        .persona-portrait-shell {
+            position: relative;
+            width: 178px;
+            height: 220px;
+            display: grid;
+            place-items: center;
+            transform-style: preserve-3d;
+            transform:
+                translate3d(calc(var(--parallax-x) * 0.34), calc(var(--parallax-y) * 0.34), 0)
+                rotateX(calc(var(--parallax-y) * -0.08deg))
+                rotateY(calc(var(--parallax-x) * 0.08deg));
+            transition: transform .18s ease-out;
+        }
+
+        .persona-portrait-shell::before {
+            content: "";
+            position: absolute;
+            inset: 18px 14px 14px;
+            border-radius: 34px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.76), rgba(255,255,255,0.1));
+            box-shadow: 0 28px 54px color-mix(in srgb, var(--accent-deep) 24%, transparent 76%);
+            filter: blur(0.5px);
+        }
+
+        .persona-portrait-shell::after {
+            content: "";
+            position: absolute;
+            inset: -8px;
+            border-radius: 42px;
+            background: radial-gradient(circle, color-mix(in srgb, var(--accent) 40%, white 60%), transparent 68%);
+            opacity: .7;
+            filter: blur(18px);
+            z-index: -1;
+            animation: personaGlowPulse 4.2s ease-in-out infinite;
+        }
+
+        .persona-orbit {
+            position: absolute;
+            width: 210px;
+            height: 210px;
+            border-radius: 50%;
+            border: 1px dashed color-mix(in srgb, var(--accent) 38%, white 62%);
+            opacity: .75;
+            transform: translate3d(calc(var(--parallax-x) * -0.2), calc(var(--parallax-y) * -0.2), 0);
+            animation: personaOrbit 18s linear infinite;
         }
 
         .persona-mark {
-            width: 112px;
-            height: 112px;
-            border-radius: 34px;
-            font-size: 42px;
+            position: relative;
+            width: 148px;
+            height: 188px;
+            border-radius: 38px;
+            font-size: 64px;
             font-family: "Palatino Linotype", "STKaiti", serif;
+            letter-spacing: .08em;
+            overflow: hidden;
+            animation: personaBreath 4.8s ease-in-out infinite;
+            transform: translateZ(22px);
+            box-shadow:
+                0 22px 44px rgba(0,0,0,0.16),
+                inset 0 1px 0 rgba(255,255,255,0.36);
         }
 
-        .persona-meta { display: grid; gap: 10px; }
+        .persona-media {
+            position: absolute;
+            inset: 0;
+            width: 148px;
+            height: 188px;
+            margin: auto;
+            object-fit: cover;
+            border-radius: 38px;
+            animation: personaBreath 4.8s ease-in-out infinite;
+            transform: translateZ(22px);
+            box-shadow:
+                0 22px 44px rgba(0,0,0,0.16),
+                inset 0 1px 0 rgba(255,255,255,0.36);
+        }
+
+        .persona-mark::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 26% 20%, rgba(255,255,255,0.46), transparent 26%),
+                linear-gradient(180deg, rgba(255,255,255,0.16), transparent 42%);
+            pointer-events: none;
+        }
+
+        .persona-mark::after {
+            content: "";
+            position: absolute;
+            inset: auto -12% -16% -12%;
+            height: 56%;
+            background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.3), transparent 68%);
+            opacity: .92;
+            pointer-events: none;
+        }
+
+        .persona-meta { display: grid; gap: 10px; position: relative; z-index: 1; }
         .persona-kicker {
             font-size: 12px;
             letter-spacing: .14em;
@@ -161,6 +346,31 @@
         .persona-name { margin: 0; font-size: clamp(28px, 3vw, 42px); line-height: 1.1; }
         .persona-title { background: var(--accent-soft); color: var(--accent-deep); font-weight: 700; }
 
+        @keyframes personaBreath {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-8px) scale(1.025); }
+        }
+
+        @keyframes personaGlowPulse {
+            0%, 100% { opacity: .5; transform: scale(.96); }
+            50% { opacity: .85; transform: scale(1.05); }
+        }
+
+        @keyframes personaBorderShift {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(18deg); }
+        }
+
+        @keyframes personaRipple {
+            0% { opacity: .7; transform: scale(.7); }
+            80% { opacity: 0; transform: scale(1.52); }
+            100% { opacity: 0; transform: scale(1.64); }
+        }
+
+        @keyframes personaOrbit {
+            from { transform: rotate(0deg) translate3d(calc(var(--parallax-x) * -0.2), calc(var(--parallax-y) * -0.2), 0); }
+            to { transform: rotate(360deg) translate3d(calc(var(--parallax-x) * -0.2), calc(var(--parallax-y) * -0.2), 0); }
+        }
         .character-rail {
             padding: 16px;
             display: grid;
@@ -269,6 +479,14 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        .character-mark, .avatar {
+            display: grid;
+            place-items: center;
+            color: white;
+            background: linear-gradient(145deg, var(--accent), var(--accent-deep));
+            box-shadow: 0 18px 34px rgba(0,0,0,0.12);
+        }
+
         .avatar {
             width: 46px;
             height: 46px;
@@ -330,6 +548,21 @@
             transition: transform .18s ease, opacity .18s ease;
         }
 
+        .media-action-btn {
+            width: fit-content;
+            min-height: 42px;
+            padding: 0 16px;
+            border-radius: 16px;
+            border: none;
+            cursor: pointer;
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+            background: linear-gradient(145deg, var(--accent), var(--accent-deep));
+            box-shadow: 0 16px 28px rgba(0,0,0,0.12);
+            transition: transform .18s ease, opacity .18s ease;
+        }
+
         .play-btn {
             width: 46px;
             height: 46px;
@@ -340,7 +573,9 @@
         .play-btn:hover,
         .play-btn:focus-visible,
         .send-btn:hover,
-        .send-btn:focus-visible {
+        .send-btn:focus-visible,
+        .media-action-btn:hover,
+        .media-action-btn:focus-visible {
             transform: translateY(-2px);
             outline: none;
         }
@@ -492,14 +727,28 @@
                 </div>
             </article>
 
-            <aside class="persona-card panel">
-                <div class="persona-mark" id="personaMark">澪</div>
+            <aside class="persona-card panel" id="personaCard" data-speaking="false">
+                <div class="persona-visual" id="personaVisual">
+                    <div class="persona-ambient"></div>
+                    <div class="persona-sheen"></div>
+                    <div class="persona-noise"></div>
+                    <div class="persona-ripple persona-ripple-1"></div>
+                    <div class="persona-ripple persona-ripple-2"></div>
+                    <div class="persona-ripple persona-ripple-3"></div>
+                    <div class="persona-orbit"></div>
+                    <div class="persona-portrait-shell">
+                        <img class="persona-media persona-image" id="personaImage" alt="角色立绘" hidden>
+                        <video class="persona-media persona-video" id="personaVideo" muted loop playsinline hidden></video>
+                        <div class="persona-mark" id="personaPortrait">澪</div>
+                    </div>
+                </div>
                 <div class="persona-meta">
                     <div class="persona-kicker">Current Partner</div>
                     <h2 class="persona-name" id="personaName">月城诗音</h2>
                     <div class="persona-title" id="personaTitle">月光治愈系</div>
                     <p class="persona-summary" id="personaSummary">轻声慢语，像深夜窗边那盏没关的小灯。</p>
                     <p class="persona-tagline" id="personaTagline">适合安静聊天和情绪陪伴</p>
+                    <button class="media-action-btn" id="generateVideoBtn" type="button">生成角色视频</button>
                 </div>
             </aside>
         </section>
@@ -531,11 +780,11 @@
 
     <script>
         const fallbackCatalog = {
-            gentle: { title: "月光治愈系", summary: "轻声慢语，像深夜窗边那盏没关的小灯。", tagline: "适合安静聊天和情绪陪伴", mark: "澪", accent: "#E78FA6", accent_soft: "#FFF1F5", accent_deep: "#8E3958", candidate_names: ["月城诗音", "白羽澄铃", "神乐纱雾", "朝雾千夏"], tts_style: "gentle soft warm" },
-            cheerful: { title: "元气甜心系", summary: "亮晶晶、反应快，带一点可爱的活力和小雀跃。", tagline: "适合轻松闲聊和打气鼓劲", mark: "莓", accent: "#FF9F5B", accent_soft: "#FFF4E8", accent_deep: "#9A4C16", candidate_names: ["七濑阳菜", "天宫铃奈", "月岛柚叶", "桃宫千璃"], tts_style: "happy lively energetic" },
-            cool: { title: "冷冽前辈系", summary: "克制、利落、带一点距离感，但不会真的伤人。", tagline: "适合干脆直接的对话节奏", mark: "凛", accent: "#6C88E8", accent_soft: "#EEF3FF", accent_deep: "#27438D", candidate_names: ["九条凛月", "雾岛绫音", "东云千鹤", "白银澪"], tts_style: "calm cool steady" },
-            humorous: { title: "怪话吐槽系", summary: "会接梗，会抖机灵，气氛感很强，但不油腻。", tagline: "适合整活、接梗和灵动互动", mark: "桃", accent: "#8B6FE8", accent_soft: "#F4EFFF", accent_deep: "#4A329B", candidate_names: ["真白柚子", "望月团子", "猫宫小满", "八寻桃"], tts_style: "happy playful humorous" },
-            taiwan_sweet: { title: "台湾甜妹系", summary: "语气黏一点、笑意甜一点，讲话像薄荷汽水一样轻快。", tagline: "适合撒娇感闲聊和甜口陪伴", mark: "糖", accent: "#73D4BE", accent_soft: "#EEFFF9", accent_deep: "#2F8F7B", candidate_names: ["林可晴", "许语棠", "陈又晴", "叶星柔"], tts_style: "sweet gentle Taiwanese accent" }
+            gentle: { title: "月光治愈系", summary: "轻声慢语，像深夜窗边那盏没关的小灯。", tagline: "适合安静聊天和情绪陪伴", mark: "澪", accent: "#E78FA6", accent_soft: "#FFF1F5", accent_deep: "#8E3958", candidate_names: ["月城诗音", "白羽澄铃", "神乐纱雾", "朝雾千夏"], tts_style: "gentle soft warm", portrait_prompt: "", portrait_url: "", video_prompt: "", video_url: "" },
+            cheerful: { title: "元气甜心系", summary: "亮晶晶、反应快，带一点可爱的活力和小雀跃。", tagline: "适合轻松闲聊和打气鼓劲", mark: "莓", accent: "#FF9F5B", accent_soft: "#FFF4E8", accent_deep: "#9A4C16", candidate_names: ["七濑阳菜", "天宫铃奈", "月岛柚叶", "桃宫千璃"], tts_style: "happy lively energetic", portrait_prompt: "", portrait_url: "", video_prompt: "", video_url: "" },
+            cool: { title: "冷冽前辈系", summary: "克制、利落、带一点距离感，但不会真的伤人。", tagline: "适合干脆直接的对话节奏", mark: "凛", accent: "#6C88E8", accent_soft: "#EEF3FF", accent_deep: "#27438D", candidate_names: ["九条凛月", "雾岛绫音", "东云千鹤", "白银澪"], tts_style: "calm cool steady", portrait_prompt: "", portrait_url: "", video_prompt: "", video_url: "" },
+            humorous: { title: "怪话吐槽系", summary: "会接梗，会抖机灵，气氛感很强，但不油腻。", tagline: "适合整活、接梗和灵动互动", mark: "桃", accent: "#8B6FE8", accent_soft: "#F4EFFF", accent_deep: "#4A329B", candidate_names: ["真白柚子", "望月团子", "猫宫小满", "八寻桃"], tts_style: "happy playful humorous", portrait_prompt: "", portrait_url: "", video_prompt: "", video_url: "" },
+            taiwan_sweet: { title: "台湾甜妹系", summary: "语气黏一点、笑意甜一点，讲话像薄荷汽水一样轻快。", tagline: "适合撒娇感闲聊和甜口陪伴", mark: "糖", accent: "#73D4BE", accent_soft: "#EEFFF9", accent_deep: "#2F8F7B", candidate_names: ["林可晴", "许语棠", "陈又晴", "叶星柔"], tts_style: "sweet gentle Taiwanese accent", portrait_prompt: "", portrait_url: "", video_prompt: "", video_url: "" }
         };
 
         let currentCharacter = "gentle";
@@ -544,6 +793,10 @@
         let characterCatalog = fallbackCatalog;
         let messageHistory = [];
         let currentAudio = null;
+        let currentMediaRequestToken = 0;
+        let personaMediaState = {};
+        const VIDEO_TASK_POLL_INTERVAL_MS = 2000;
+        const VIDEO_TASK_MAX_POLLS = 20;
 
         const chatContainer = document.getElementById("chatContainer");
         const messageInput = document.getElementById("messageInput");
@@ -563,10 +816,161 @@
             document.documentElement.style.setProperty("--accent-deep", meta.accent_deep);
         }
 
+        function mediaStateFor(character = currentCharacter) {
+            if (!personaMediaState[character]) {
+                const meta = metaFor(character);
+                personaMediaState[character] = {
+                    imageUrl: meta.portrait_url || "",
+                    videoUrl: meta.video_url || "",
+                    videoTaskId: "",
+                    videoTaskStatus: ""
+                };
+            }
+            return personaMediaState[character];
+        }
+
+        function updateVideoButton() {
+            const button = document.getElementById("generateVideoBtn");
+            if (!button) {
+                return;
+            }
+            const media = mediaStateFor();
+            const isPending = media.videoTaskStatus === "PROCESSING" && !!media.videoTaskId;
+            button.disabled = isPending;
+            button.textContent = isPending ? "视频生成中..." : "生成角色视频";
+        }
+
+        function renderPersonaMedia() {
+            const media = mediaStateFor();
+            const personaImage = document.getElementById("personaImage");
+            const personaVideo = document.getElementById("personaVideo");
+            const personaPortrait = document.getElementById("personaPortrait");
+
+            if (media.videoUrl) {
+                personaVideo.src = media.videoUrl;
+                personaVideo.hidden = false;
+                personaImage.hidden = true;
+                personaPortrait.hidden = true;
+                personaVideo.play().catch(() => {});
+                updateVideoButton();
+                return;
+            }
+
+            personaVideo.pause();
+            personaVideo.removeAttribute("src");
+            personaVideo.load();
+            personaVideo.hidden = true;
+
+            if (media.imageUrl) {
+                personaImage.src = media.imageUrl;
+                personaImage.hidden = false;
+                personaPortrait.hidden = true;
+                updateVideoButton();
+                return;
+            }
+
+            personaImage.removeAttribute("src");
+            personaImage.hidden = true;
+            personaPortrait.hidden = false;
+            updateVideoButton();
+        }
+
+        async function requestCharacterPortrait() {
+            const requestToken = ++currentMediaRequestToken;
+            const response = await fetch("/api/character-media/image", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ character: currentCharacter, prompt: metaFor().portrait_prompt })
+            });
+            const data = await response.json();
+            if (requestToken !== currentMediaRequestToken || !data.success || !data.media_url) {
+                return;
+            }
+            mediaStateFor().imageUrl = data.media_url;
+            renderPersonaMedia();
+        }
+
+        async function pollCharacterVideoTask(taskId, requestToken, character) {
+            for (let attempt = 0; attempt < VIDEO_TASK_MAX_POLLS; attempt += 1) {
+                if (requestToken !== currentMediaRequestToken || character !== currentCharacter) {
+                    return;
+                }
+
+                const response = await fetch(`/api/character-media/video/${taskId}`);
+                const data = await response.json();
+                if (requestToken !== currentMediaRequestToken || character !== currentCharacter) {
+                    return;
+                }
+
+                const media = mediaStateFor(character);
+                if (!data.success) {
+                    media.videoTaskId = "";
+                    media.videoTaskStatus = "";
+                    renderPersonaMedia();
+                    return;
+                }
+
+                media.videoTaskStatus = data.task_status || "PROCESSING";
+                if (data.media_url) {
+                    media.videoUrl = data.media_url;
+                    media.videoTaskId = "";
+                    media.videoTaskStatus = "SUCCESS";
+                    renderPersonaMedia();
+                    return;
+                }
+
+                if (media.videoTaskStatus === "FAIL") {
+                    media.videoTaskId = "";
+                    renderPersonaMedia();
+                    return;
+                }
+
+                renderPersonaMedia();
+                await new Promise((resolve) => setTimeout(resolve, VIDEO_TASK_POLL_INTERVAL_MS));
+            }
+
+            if (requestToken !== currentMediaRequestToken || character !== currentCharacter) {
+                return;
+            }
+
+            const media = mediaStateFor(character);
+            media.videoTaskId = "";
+            media.videoTaskStatus = "";
+            renderPersonaMedia();
+        }
+
+        async function requestCharacterVideo() {
+            const requestToken = ++currentMediaRequestToken;
+            const character = currentCharacter;
+            const media = mediaStateFor(character);
+            media.videoUrl = "";
+            media.videoTaskId = "";
+            media.videoTaskStatus = "PROCESSING";
+            renderPersonaMedia();
+            const response = await fetch("/api/character-media/video", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ character, prompt: metaFor(character).video_prompt })
+            });
+            const data = await response.json();
+            if (requestToken !== currentMediaRequestToken || character !== currentCharacter) {
+                return;
+            }
+            if (!data.success || !data.task_id) {
+                media.videoTaskStatus = "";
+                renderPersonaMedia();
+                return;
+            }
+            media.videoTaskId = data.task_id;
+            media.videoTaskStatus = data.task_status || "PROCESSING";
+            renderPersonaMedia();
+            await pollCharacterVideoTask(data.task_id, requestToken, character);
+        }
+
         function renderPersona() {
             const meta = metaFor();
             applyAccent(meta);
-            document.getElementById("personaMark").textContent = meta.mark;
+            document.getElementById("personaPortrait").textContent = meta.mark;
             document.getElementById("personaName").textContent = currentCharacterName;
             document.getElementById("personaTitle").textContent = meta.title;
             document.getElementById("personaSummary").textContent = meta.summary;
@@ -578,6 +982,47 @@
             document.getElementById("chatRoleChip").textContent = currentCharacter;
             document.getElementById("composerHint").textContent = `和${currentCharacterName}说点什么吧。回车发送，Shift + 回车换行。`;
             sendBtn.textContent = `发送到${currentCharacterName}`;
+            renderPersonaMedia();
+        }
+
+        function setPersonaSpeaking(isSpeaking) {
+            const personaCard = document.getElementById("personaCard");
+            personaCard.dataset.speaking = isSpeaking ? "true" : "false";
+        }
+
+        function bindPersonaParallax() {
+            const personaCard = document.getElementById("personaCard");
+            if (!personaCard || window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 720) {
+                document.documentElement.style.setProperty("--parallax-x", "0px");
+                document.documentElement.style.setProperty("--parallax-y", "0px");
+                return;
+            }
+
+            const updateParallax = (event) => {
+                const rect = personaCard.getBoundingClientRect();
+                const offsetX = ((event.clientX - rect.left) / rect.width - 0.5) * 18;
+                const offsetY = ((event.clientY - rect.top) / rect.height - 0.5) * 18;
+                document.documentElement.style.setProperty("--parallax-x", `${offsetX.toFixed(2)}px`);
+                document.documentElement.style.setProperty("--parallax-y", `${offsetY.toFixed(2)}px`);
+            };
+
+            const resetParallax = () => {
+                document.documentElement.style.setProperty("--parallax-x", "0px");
+                document.documentElement.style.setProperty("--parallax-y", "0px");
+            };
+
+            personaCard.addEventListener("pointermove", updateParallax);
+            personaCard.addEventListener("pointerleave", resetParallax);
+        }
+
+        function resetAudioPlayback(button, waveform) {
+            if (button) {
+                button.textContent = "▶";
+            }
+            if (waveform) {
+                waveform.querySelectorAll(".wave-bar").forEach((bar) => bar.classList.remove("playing"));
+            }
+            setPersonaSpeaking(false);
         }
 
         function renderCharacterRail() {
@@ -595,12 +1040,18 @@
 
             rail.querySelectorAll(".character-card").forEach((button) => {
                 button.addEventListener("click", () => {
+                    if (currentAudio) {
+                        currentAudio.pause();
+                        currentAudio = null;
+                    }
+                    setPersonaSpeaking(false);
                     currentCharacter = button.dataset.character;
                     currentCharacterName = pickRandomName(metaFor().candidate_names);
                     messageHistory = [];
                     renderCharacterRail();
                     renderPersona();
                     renderWelcomeMessage();
+                    requestCharacterPortrait().catch((error) => console.warn("requestCharacterPortrait failed:", error));
                 });
             });
         }
@@ -669,34 +1120,38 @@
 
             document.querySelectorAll(".play-btn").forEach((btn) => {
                 if (btn !== button) {
-                    btn.textContent = "▶";
-                    btn.parentElement?.querySelectorAll(".wave-bar").forEach((bar) => bar.classList.remove("playing"));
+                    resetAudioPlayback(btn, btn.parentElement?.querySelector(".waveform"));
                 }
             });
 
-            if (!currentAudio || currentAudio.src !== nextSrc) {
+            if (currentAudio && currentAudio.src !== nextSrc) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+
+            if (!currentAudio) {
                 currentAudio = new Audio(audioUrl);
             }
 
             if (currentAudio.paused) {
                 currentAudio.play();
                 button.textContent = "❚❚";
+                setPersonaSpeaking(true);
                 waveform.querySelectorAll(".wave-bar").forEach((bar, index) => {
                     bar.classList.add("playing");
                     bar.style.animationDelay = `${index * 0.05}s`;
                 });
                 currentAudio.onended = () => {
-                    button.textContent = "▶";
-                    waveform.querySelectorAll(".wave-bar").forEach((bar) => bar.classList.remove("playing"));
+                    resetAudioPlayback(button, waveform);
                 };
                 currentAudio.onerror = () => {
                     button.textContent = "!";
                     waveform.innerHTML = "<span style='font-size:12px;color:#667085'>音频加载失败</span>";
+                    setPersonaSpeaking(false);
                 };
             } else {
                 currentAudio.pause();
-                button.textContent = "▶";
-                waveform.querySelectorAll(".wave-bar").forEach((bar) => bar.classList.remove("playing"));
+                resetAudioPlayback(button, waveform);
             }
         }
 
@@ -764,6 +1219,11 @@
             renderCharacterRail();
             renderPersona();
             renderWelcomeMessage();
+            bindPersonaParallax();
+            document.getElementById("generateVideoBtn").addEventListener("click", () => {
+                requestCharacterVideo().catch((error) => console.warn("requestCharacterVideo failed:", error));
+            });
+            requestCharacterPortrait().catch((error) => console.warn("requestCharacterPortrait failed:", error));
         }
 
         sendBtn.addEventListener("click", sendMessage);

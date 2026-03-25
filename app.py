@@ -84,6 +84,10 @@ CHARACTERS = {
         ),
         "emotion": "gentle",
         "tts_style": "gentle soft warm",
+        "portrait_prompt": "二次元少女角色立绘，月光治愈系，温柔长发，柔和粉白配色，半身肖像，细腻光影，治愈氛围",
+        "portrait_url": "",
+        "video_prompt": "二次元少女角色短视频镜头，月光治愈系，温柔注视镜头，轻微呼吸感和发丝摆动，柔和粉白色调，治愈氛围",
+        "video_url": "",
     },
     "cheerful": {
         "title": "元气甜心系",
@@ -110,6 +114,10 @@ CHARACTERS = {
         ),
         "emotion": "happy",
         "tts_style": "happy lively energetic",
+        "portrait_prompt": "二次元元气少女角色立绘，橙金配色，笑容明亮，灵动眼神，青春感，半身肖像，高饱和但柔和",
+        "portrait_url": "",
+        "video_prompt": "二次元元气少女短视频镜头，开心挥手，橙金配色，轻快活泼，镜头前自然眨眼和轻微动作",
+        "video_url": "",
     },
     "cool": {
         "title": "冷冽前辈系",
@@ -136,6 +144,10 @@ CHARACTERS = {
         ),
         "emotion": "calm",
         "tts_style": "calm cool steady",
+        "portrait_prompt": "二次元冷淡前辈角色立绘，蓝白冷色调，清冷目光，利落发型，半身肖像，精致光影，克制高级感",
+        "portrait_url": "",
+        "video_prompt": "二次元冷淡前辈短视频镜头，蓝白冷色调，平静注视镜头，轻微转头与发丝摆动，克制氛围",
+        "video_url": "",
     },
     "humorous": {
         "title": "怪话吐槽系",
@@ -162,6 +174,10 @@ CHARACTERS = {
         ),
         "emotion": "happy",
         "tts_style": "happy playful humorous",
+        "portrait_prompt": "二次元搞怪少女角色立绘，紫色梦幻配色，俏皮表情，古灵精怪，半身肖像，轻喜剧氛围",
+        "portrait_url": "",
+        "video_prompt": "二次元搞怪少女短视频镜头，俏皮眨眼，紫色梦幻配色，轻快吐槽感，表情灵动",
+        "video_url": "",
     },
     "taiwan_sweet": {
         "title": "台湾甜妹系",
@@ -189,6 +205,10 @@ CHARACTERS = {
         ),
         "emotion": "happy",
         "tts_style": "sweet gentle Taiwanese accent",
+        "portrait_prompt": "二次元台湾甜妹角色立绘，薄荷绿和奶白配色，甜美笑容，清新可爱，半身肖像，像汽水一样轻快",
+        "portrait_url": "",
+        "video_prompt": "二次元台湾甜妹短视频镜头，甜甜看向镜头，薄荷绿和奶白配色，轻快可爱，细微动作和发丝摆动",
+        "video_url": "",
     },
 }
 
@@ -200,6 +220,12 @@ def validate_mimo_voice(voice):
         supported = ", ".join(SUPPORTED_MIMO_VOICES.keys())
         raise ValueError(f"Unsupported Mimo voice '{voice}'. Use one of: {supported}")
     return voice
+
+
+def validate_character_key(character_key):
+    if character_key not in CHARACTERS:
+        raise ValueError(f"Unsupported character '{character_key}'.")
+    return character_key
 
 
 MIMO_DEFAULT_VOICE = validate_mimo_voice(os.environ.get("MIMO_TTS_VOICE", "default_zh"))
@@ -238,6 +264,10 @@ def serialize_character_catalog():
             "candidate_names": value["candidate_names"],
             "emotion": value["emotion"],
             "tts_style": value["tts_style"],
+            "portrait_prompt": value.get("portrait_prompt", ""),
+            "portrait_url": value.get("portrait_url", ""),
+            "video_prompt": value.get("video_prompt", ""),
+            "video_url": value.get("video_url", ""),
         }
         for key, value in CHARACTERS.items()
     }
@@ -296,6 +326,79 @@ def get_mimo_audio(text, emotion="happy", voice=None, style=None):
     raise RuntimeError("No audio data returned by Mimo TTS.")
 
 
+def _extract_first_media_url(payload):
+    data = payload.get("data") if isinstance(payload, dict) else getattr(payload, "data", None)
+    if isinstance(data, list):
+        first = data[0] if data else None
+        if isinstance(first, dict):
+            return first.get("url") or first.get("video_url")
+        return getattr(first, "url", None) or getattr(first, "video_url", None)
+    if isinstance(data, dict):
+        return data.get("url") or data.get("video_url")
+    return getattr(data, "url", None) or getattr(data, "video_url", None)
+
+
+def _resolve_character_media_prompt(character_key, prompt, field_name):
+    char_info = CHARACTERS[validate_character_key(character_key)]
+    return (prompt or "").strip() or char_info.get(field_name) or f"{char_info['title']}，{char_info['summary']}"
+
+
+def generate_character_image(character_key, prompt=None):
+    final_prompt = _resolve_character_media_prompt(character_key, prompt, "portrait_prompt")
+    response = glm_client.images.generate(
+        model="cogview-3-flash",
+        prompt=final_prompt,
+    )
+    media_url = _extract_first_media_url(response)
+    if not media_url:
+        raise RuntimeError("No image URL returned by CogView.")
+    return {
+        "character": character_key,
+        "url": media_url,
+        "prompt": final_prompt,
+    }
+
+
+def submit_character_video_task(character_key, prompt=None):
+    final_prompt = _resolve_character_media_prompt(character_key, prompt, "video_prompt")
+    response = glm_client.post(
+        "/videos/generations",
+        cast_to=object,
+        body={
+            "model": "cogvideox-flash",
+            "prompt": final_prompt,
+        },
+    )
+    task_id = response.get("id") if isinstance(response, dict) else getattr(response, "id", None)
+    if not task_id:
+        raise RuntimeError("No video task ID returned by CogVideoX.")
+    task_status = response.get("task_status") if isinstance(response, dict) else getattr(response, "task_status", None)
+    return {
+        "task_id": task_id,
+        "task_status": task_status or "PROCESSING",
+        "character": character_key,
+        "prompt": final_prompt,
+    }
+
+
+def get_character_video_task_status(task_id):
+    result = glm_client.get(f"/async-result/{task_id}", cast_to=object)
+    task_status = result.get("task_status") if isinstance(result, dict) else getattr(result, "task_status", None)
+    payload = {
+        "task_id": task_id,
+        "task_status": task_status or "PROCESSING",
+    }
+    if task_status == "SUCCESS":
+        video_result = result.get("video_result", []) if isinstance(result, dict) else getattr(result, "video_result", [])
+        media_url = _extract_first_media_url({"data": video_result})
+        if not media_url:
+            raise RuntimeError("No video URL returned by CogVideoX.")
+        payload["media_url"] = media_url
+    elif task_status == "FAIL":
+        raise RuntimeError("CogVideoX video generation failed.")
+    return payload
+
+
 @app.route("/")
 def index():
     return send_file("index.html")
@@ -311,6 +414,96 @@ def characters():
             "characters": serialize_character_catalog(),
         }
     )
+
+
+@app.route("/api/character-media/image", methods=["POST"])
+def character_media_image():
+    data = request.get_json(silent=True) or {}
+    character = data.get("character", "")
+    prompt = data.get("prompt")
+
+    try:
+        validate_character_key(character)
+        result = generate_character_image(character, prompt=prompt)
+        return jsonify(
+            {
+                "success": True,
+                "media_type": "image",
+                "character": result["character"],
+                "media_url": result["url"],
+                "prompt": result["prompt"],
+                "fallback": False,
+            }
+        )
+    except ValueError as error:
+        return jsonify({"success": False, "error": str(error)}), 400
+    except Exception as error:
+        return jsonify(
+            {
+                "success": False,
+                "error": str(error),
+                "fallback": True,
+                "media_type": "image",
+            }
+        ), 502
+
+
+@app.route("/api/character-media/video", methods=["POST"])
+def character_media_video():
+    data = request.get_json(silent=True) or {}
+    character = data.get("character", "")
+    prompt = data.get("prompt")
+
+    try:
+        validate_character_key(character)
+        result = submit_character_video_task(character, prompt=prompt)
+        return jsonify(
+            {
+                "success": True,
+                "media_type": "video",
+                "character": result["character"],
+                "task_id": result["task_id"],
+                "task_status": result["task_status"],
+                "prompt": result["prompt"],
+                "fallback": False,
+            }
+        )
+    except ValueError as error:
+        return jsonify({"success": False, "error": str(error)}), 400
+    except Exception as error:
+        return jsonify(
+            {
+                "success": False,
+                "error": str(error),
+                "fallback": True,
+                "media_type": "video",
+            }
+        ), 502
+
+
+@app.route("/api/character-media/video/<task_id>", methods=["GET"])
+def character_media_video_status(task_id):
+    try:
+        result = get_character_video_task_status(task_id)
+        payload = {
+            "success": True,
+            "media_type": "video",
+            "task_id": result["task_id"],
+            "task_status": result["task_status"],
+            "fallback": False,
+        }
+        if result.get("media_url"):
+            payload["media_url"] = result["media_url"]
+        return jsonify(payload)
+    except Exception as error:
+        return jsonify(
+            {
+                "success": False,
+                "error": str(error),
+                "fallback": True,
+                "media_type": "video",
+            }
+        ), 502
 
 
 @app.route("/api/chat", methods=["POST"])
