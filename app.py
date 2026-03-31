@@ -5,6 +5,8 @@ import base64
 import os
 import re
 import uuid
+import edge_tts
+import asyncio
 
 app = Flask(__name__)
 
@@ -84,7 +86,7 @@ CHARACTERS = {
         ),
         "emotion": "gentle",
         "tts_style": "gentle soft warm",
-        "portrait_prompt": "二次元少女角色立绘，月光治愈系，温柔长发，柔和粉白配色，半身肖像，细腻光影，治愈氛围",
+        "portrait_prompt": "高质量二次元动漫风格插画，月光治愈系，温柔长发少女，柔和粉白配色，半身肖像，日系动漫艺术风格，flat illustration，非3D渲染，线条清晰，赛璐珞风格上色，细腻光影，治愈氛围",
         "portrait_url": "",
         "video_prompt": "二次元少女角色短视频镜头，月光治愈系，温柔注视镜头，轻微呼吸感和发丝摆动，柔和粉白色调，治愈氛围",
         "video_url": "",
@@ -114,7 +116,7 @@ CHARACTERS = {
         ),
         "emotion": "happy",
         "tts_style": "happy lively energetic",
-        "portrait_prompt": "二次元元气少女角色立绘，橙金配色，笑容明亮，灵动眼神，青春感，半身肖像，高饱和但柔和",
+        "portrait_prompt": "高质量二次元动漫风格插画，元气少女，橙金配色，笑容明亮，灵动眼神，青春活力，半身肖像，日系动漫艺术风格，flat illustration，非3D渲染，线条清晰，赛璐珞风格上色，高饱和但柔和",
         "portrait_url": "",
         "video_prompt": "二次元元气少女短视频镜头，开心挥手，橙金配色，轻快活泼，镜头前自然眨眼和轻微动作",
         "video_url": "",
@@ -144,7 +146,7 @@ CHARACTERS = {
         ),
         "emotion": "calm",
         "tts_style": "calm cool steady",
-        "portrait_prompt": "二次元冷淡前辈角色立绘，蓝白冷色调，清冷目光，利落发型，半身肖像，精致光影，克制高级感",
+        "portrait_prompt": "高质量二次元动漫风格插画，冷淡系前辈少女，蓝白冷色调，清冷目光，利落发型，半身肖像，日系动漫艺术风格，flat illustration，非3D渲染，线条清晰，赛璐珞风格上色，精致光影，克制高级感",
         "portrait_url": "",
         "video_prompt": "二次元冷淡前辈短视频镜头，蓝白冷色调，平静注视镜头，轻微转头与发丝摆动，克制氛围",
         "video_url": "",
@@ -174,7 +176,7 @@ CHARACTERS = {
         ),
         "emotion": "happy",
         "tts_style": "happy playful humorous",
-        "portrait_prompt": "二次元搞怪少女角色立绘，紫色梦幻配色，俏皮表情，古灵精怪，半身肖像，轻喜剧氛围",
+        "portrait_prompt": "高质量二次元动漫风格插画，搞怪吐槽系少女，紫色梦幻配色，俏皮表情，古灵精怪，半身肖像，日系动漫艺术风格，flat illustration，非3D渲染，线条清晰，赛璐珞风格上色，轻喜剧氛围",
         "portrait_url": "",
         "video_prompt": "二次元搞怪少女短视频镜头，俏皮眨眼，紫色梦幻配色，轻快吐槽感，表情灵动",
         "video_url": "",
@@ -205,7 +207,7 @@ CHARACTERS = {
         ),
         "emotion": "happy",
         "tts_style": "sweet gentle Taiwanese accent",
-        "portrait_prompt": "二次元台湾甜妹角色立绘，薄荷绿和奶白配色，甜美笑容，清新可爱，半身肖像，像汽水一样轻快",
+        "portrait_prompt": "高质量二次元动漫风格插画，台湾甜妹系少女，薄荷绿和奶白配色，甜美笑容，清新可爱，半身肖像，日系动漫艺术风格，flat illustration，非3D渲染，线条清晰，赛璐珞风格上色，像汽水一样轻快",
         "portrait_url": "",
         "video_prompt": "二次元台湾甜妹短视频镜头，甜甜看向镜头，薄荷绿和奶白配色，轻快可爱，细微动作和发丝摆动",
         "video_url": "",
@@ -288,7 +290,7 @@ def build_fallback_reply(character_key, error=None):
 def get_glm_response(messages, character_prompt):
     all_messages = [{"role": "system", "content": character_prompt}] + messages
     response = glm_client.chat.completions.create(
-        model="glm-4.7-flash",
+        model="glm-4-flash",
         messages=all_messages,
         temperature=0.75,
         max_tokens=500,
@@ -311,19 +313,50 @@ def get_glm_response(messages, character_prompt):
     return None, content
 
 
+def get_edge_audio(text, emotion="happy", voice=None, style=None):
+    """
+    Fallback TTS using Microsoft Edge TTS (free, no API key needed).
+    Returns base64 encoded audio data.
+    """
+    # Map our emotion/voice to Edge TTS voices
+    edge_voices = {
+        "default_zh": "zh-CN-XiaoxiaoNeural",
+        "mimo_default": "zh-CN-XiaoxiaoNeural",
+        "default_en": "en-US-AriaNeural",
+    }
+
+    # Adjust voice based on emotion
+    emotion_voices = {
+        "gentle": "zh-CN-XiaoyiNeural",  # Softer voice
+        "happy": "zh-CN-XiaoxiaoNeural",  # Cheerful voice
+        "calm": "zh-CN-YunyangNeural",  # Calm voice
+        "sad": "zh-CN-XiaoyiNeural",  # Gentle voice
+        "angry": "zh-CN-YunxiNeural",  # Stronger voice
+    }
+
+    resolved_voice = voice or MIMO_DEFAULT_VOICE
+    edge_voice = emotion_voices.get(emotion, edge_voices.get(resolved_voice, "zh-CN-XiaoxiaoNeural"))
+
+    # Remove style tags from text for Edge TTS
+    clean_text = strip_legacy_emotion_tag(text).strip()
+
+    async def generate_audio():
+        communicate = edge_tts.Communicate(text=clean_text, voice=edge_voice)
+        audio_data = b""
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_data += chunk["data"]
+        return base64.b64encode(audio_data).decode("utf-8")
+
+    try:
+        return asyncio.run(generate_audio())
+    except Exception as e:
+        raise RuntimeError(f"Edge TTS failed: {e}")
+
+
 def get_mimo_audio(text, emotion="happy", voice=None, style=None):
-    resolved_voice = validate_mimo_voice(voice or MIMO_DEFAULT_VOICE)
-    formatted_text = build_mimo_tts_text(text, emotion=emotion, style=style)
-    response = mimo_client.chat.completions.create(
-        model="mimo-v2-tts",
-        messages=[{"role": "assistant", "content": formatted_text}],
-        audio={"format": "wav", "voice": resolved_voice},
-    )
-    message = response.choices[0].message if response.choices else None
-    audio = getattr(message, "audio", None) if message else None
-    if audio and getattr(audio, "data", None):
-        return audio.data
-    raise RuntimeError("No audio data returned by Mimo TTS.")
+    # Mimo TTS API is currently unresponsive - use Edge TTS directly
+    return get_edge_audio(text, emotion=emotion, voice=voice, style=style)
 
 
 def _extract_first_media_url(payload):
@@ -471,10 +504,14 @@ def character_media_video():
     except ValueError as error:
         return jsonify({"success": False, "error": str(error)}), 400
     except Exception as error:
+        error_msg = str(error)
+        # Provide user-friendly error message for known issues
+        if "429" in error_msg or "1305" in error_msg or "当前并发" in error_msg:
+            error_msg = "视频生成服务暂时不可用（上游API限流或维护中），请稍后再试。"
         return jsonify(
             {
                 "success": False,
-                "error": str(error),
+                "error": error_msg,
                 "fallback": True,
                 "media_type": "video",
             }
